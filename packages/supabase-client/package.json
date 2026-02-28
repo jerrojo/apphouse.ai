@@ -1,0 +1,17 @@
+{
+  "name": "@apphouse/supabase-client",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/client.ts",
+  "types": "./src/client.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.0",
+    "@supabase/ssr": "^0.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
