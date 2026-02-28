@@ -85,14 +85,14 @@ export default function NewAppPage() {
           slug,
           name,
           description: form.problemSolved || null,
-          status: 'draft',
-          platforms: getPlatformString(form.platforms),
+          status: 'draft' as const,
+          platforms: getPlatformString(form.platforms) as 'web' | 'mobile' | 'full',
           domain: form.desiredDomain || null,
-          vibe: form.vibe,
+          vibe: form.vibe as 'minimal' | 'playful' | 'corporate' | 'premium' | 'bold',
           revenue_model: form.revenueModel,
           created_by: user.id,
-          config: {},
-        })
+          config: {} as Record<string, unknown>,
+        } as any)
         .select()
         .single();
 
@@ -118,7 +118,7 @@ export default function NewAppPage() {
           reference_urls: refs,
           additional_notes: form.additionalNotes || null,
           status: 'pending',
-        })
+        } as any)
         .select()
         .single();
 
@@ -139,7 +139,7 @@ export default function NewAppPage() {
           status: 'queued',
           current_agent: 'ux',
           progress: 0,
-        });
+        } as any);
 
       if (pipelineError) throw pipelineError;
 
