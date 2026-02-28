@@ -1,5 +1,5 @@
 {
-  "name": "{{APP_SLUG}}-mobile",
+  "name": "apphouse-template-mobile",
   "version": "0.1.0",
   "private": true,
   "main": "expo-router/entry",
