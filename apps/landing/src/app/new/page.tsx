@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 type Step = 1 | 2 | 3;
 type Vibe = 'minimal' | 'playful' | 'corporate' | 'premium' | 'bold';
@@ -29,10 +30,29 @@ const INITIAL_FORM: IntakeForm = {
   additionalNotes: '',
 };
 
+function generateSlug(sentence: string): string {
+  return sentence
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 40)
+    .replace(/-+$/, '');
+}
+
+function getPlatformString(p: { web: boolean; ios: boolean; android: boolean }): string {
+  if (p.web && (p.ios || p.android)) return 'full';
+  if (p.ios || p.android) return 'mobile';
+  return 'web';
+}
+
 export default function NewAppPage() {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<IntakeForm>(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const supabase = createClient();
 
   const update = (field: keyof IntakeForm, value: unknown) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -45,15 +65,90 @@ export default function NewAppPage() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setError(null);
+
     try {
-      // TODO: create app row in supabase
-      // TODO: create app_order row
-      // TODO: POST /api/pipeline to start cooking
-      // TODO: redirect to /cooking/[pipelineId]
-      console.log('submitting:', form);
-      window.location.href = '/'; // placeholder redirect
-    } catch (error) {
-      console.error('submit failed:', error);
+      // 1. Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.href = '/login?next=/new';
+        return;
+      }
+
+      // 2. Create the app
+      const slug = generateSlug(form.oneSentence) || `app-${Date.now()}`;
+      const name = form.oneSentence.slice(0, 60);
+
+      const { data: app, error: appError } = await supabase
+        .from('apps')
+        .insert({
+          slug,
+          name,
+          description: form.problemSolved || null,
+          status: 'draft',
+          platforms: getPlatformString(form.platforms),
+          domain: form.desiredDomain || null,
+          vibe: form.vibe,
+          revenue_model: form.revenueModel,
+          created_by: user.id,
+          config: {},
+        })
+        .select()
+        .single();
+
+      if (appError) throw appError;
+
+      // 3. Create the order
+      const refs = form.referenceUrls.trim()
+        ? form.referenceUrls.split('\n').map((u) => u.trim()).filter(Boolean)
+        : null;
+
+      const { data: order, error: orderError } = await supabase
+        .from('app_orders')
+        .insert({
+          app_id: app.id,
+          creator_id: user.id,
+          one_sentence: form.oneSentence,
+          target_user: form.targetUser || null,
+          problem_solved: form.problemSolved || null,
+          platforms: getPlatformString(form.platforms),
+          desired_domain: form.desiredDomain || null,
+          revenue_model: form.revenueModel,
+          vibe: form.vibe,
+          reference_urls: refs,
+          additional_notes: form.additionalNotes || null,
+          status: 'pending',
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // 4. Update app status to cooking
+      await supabase
+        .from('apps')
+        .update({ status: 'cooking' })
+        .eq('id', app.id);
+
+      // 5. Create pipeline run
+      const { error: pipelineError } = await supabase
+        .from('pipeline_runs')
+        .insert({
+          app_id: app.id,
+          order_id: order.id,
+          status: 'queued',
+          current_agent: 'ux',
+          progress: 0,
+        });
+
+      if (pipelineError) throw pipelineError;
+
+      // 6. Redirect to home (later: redirect to /cooking/[id])
+      window.location.href = '/';
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'something went wrong';
+      setError(message);
+      console.error('submit failed:', err);
     } finally {
       setSubmitting(false);
     }
@@ -200,7 +295,7 @@ export default function NewAppPage() {
                 placeholder="myapp.com"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-0 outline-none transition-colors text-sm"
               />
-              <p className="text-xs text-gray-400 mt-1">we'll check availability via godaddy</p>
+              <p className="text-xs text-gray-400 mt-1">we&apos;ll check availability via godaddy</p>
             </div>
 
             <div>
@@ -281,7 +376,7 @@ export default function NewAppPage() {
 
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1.5">
-                anything else claude should know? (optional)
+                anything else we should know? (optional)
               </label>
               <textarea
                 id="notes"
@@ -292,6 +387,13 @@ export default function NewAppPage() {
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-0 outline-none transition-colors text-sm resize-none"
               />
             </div>
+          </div>
+        )}
+
+        {/* error message */}
+        {error && (
+          <div className="mt-4 px-4 py-3 bg-red-50 text-red-700 rounded-xl text-sm">
+            {error}
           </div>
         )}
 
