@@ -79,20 +79,21 @@ export default function NewAppPage() {
       const slug = generateSlug(form.oneSentence) || `app-${Date.now()}`;
       const name = form.oneSentence.slice(0, 60);
 
-      const { data: app, error: appError } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: app, error: appError } = await (supabase as any)
         .from('apps')
         .insert({
           slug,
           name,
           description: form.problemSolved || null,
-          status: 'draft' as const,
-          platforms: getPlatformString(form.platforms) as 'web' | 'mobile' | 'full',
+          status: 'draft',
+          platforms: getPlatformString(form.platforms),
           domain: form.desiredDomain || null,
-          vibe: form.vibe as 'minimal' | 'playful' | 'corporate' | 'premium' | 'bold',
+          vibe: form.vibe,
           revenue_model: form.revenueModel,
           created_by: user.id,
-          config: {} as Record<string, unknown>,
-        } as any)
+          config: {},
+        })
         .select()
         .single();
 
@@ -103,7 +104,8 @@ export default function NewAppPage() {
         ? form.referenceUrls.split('\n').map((u) => u.trim()).filter(Boolean)
         : null;
 
-      const { data: order, error: orderError } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: order, error: orderError } = await (supabase as any)
         .from('app_orders')
         .insert({
           app_id: app.id,
@@ -118,20 +120,22 @@ export default function NewAppPage() {
           reference_urls: refs,
           additional_notes: form.additionalNotes || null,
           status: 'pending',
-        } as any)
+        })
         .select()
         .single();
 
       if (orderError) throw orderError;
 
       // 4. Update app status to cooking
-      await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
         .from('apps')
         .update({ status: 'cooking' })
         .eq('id', app.id);
 
       // 5. Create pipeline run
-      const { error: pipelineError } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: pipelineError } = await (supabase as any)
         .from('pipeline_runs')
         .insert({
           app_id: app.id,
@@ -139,7 +143,7 @@ export default function NewAppPage() {
           status: 'queued',
           current_agent: 'ux',
           progress: 0,
-        } as any);
+        });
 
       if (pipelineError) throw pipelineError;
 

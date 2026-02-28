@@ -8,7 +8,8 @@ export default async function Home() {
   // If logged in, fetch their apps
   let apps: { slug: string; name: string; status: string; icon_url: string | null; description: string | null }[] = [];
   if (user) {
-    const { data } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any)
       .from('apps')
       .select('slug, name, status, icon_url, description')
       .eq('created_by', user.id)
