@@ -39,9 +39,9 @@ export default async function Home() {
                   type="submit"
                   className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold hover:bg-blue-700 transition-colors"
                   aria-label="profile menu"
-                  title={user.email || 'Account'}
+                  title={user.phone || user.email || 'Account'}
                 >
-                  {(user.email || '?')[0].toUpperCase()}
+                  {(user.phone || user.email || '?').slice(-2)}
                 </button>
               </form>
             ) : (

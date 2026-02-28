@@ -1,201 +1,485 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-type Mode = 'login' | 'signup';
+// ─────────────────────────────────────────────────────────────────────────────
+// Steps: phone → otp (new users) → pin-setup (new users) → pin-login (existing)
+// ─────────────────────────────────────────────────────────────────────────────
+type Step = 'phone' | 'otp' | 'pin-setup' | 'pin-login';
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<Mode>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [step, setStep] = useState<Step>('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [verificationToken, setVerificationToken] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [countdown, setCountdown] = useState(0);
 
   const supabase = createClient();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
+  // ── Countdown timer for resend ────────────────────────────────────
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
-    if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+  // ── Phone submit ──────────────────────────────────────────────────
+  const handlePhoneSubmit = async () => {
+    setError(null);
+    const cleaned = phone.trim();
 
-      if (error) {
-        setMessage({ type: 'error', text: error.message });
-      } else {
-        setMessage({
-          type: 'success',
-          text: 'check your email to confirm your account.',
-        });
-      }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        setMessage({ type: 'error', text: error.message });
-      } else {
-        // Redirect to home or to the page they were trying to access
-        const params = new URLSearchParams(window.location.search);
-        const next = params.get('next') || '/';
-        window.location.href = next;
-      }
+    if (!/^\+[1-9]\d{6,14}$/.test(cleaned)) {
+      setError('ingresa tu teléfono con código de país (ej. +521234567890)');
+      return;
     }
 
+    setLoading(true);
+
+    // Try signing in with a dummy PIN to check if the user exists.
+    // Supabase returns "Invalid login credentials" if user exists but wrong pw.
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      phone: cleaned,
+      password: '______', // dummy — will always fail
+    });
+
+    const errMsg = signInErr?.message?.toLowerCase() || '';
+
+    if (errMsg.includes('invalid') && errMsg.includes('credentials')) {
+      // User exists — ask for their PIN
+      setStep('pin-login');
+      setLoading(false);
+      return;
+    }
+
+    // User doesn't exist — send OTP for registration
+    const res = await fetch('/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: cleaned }),
+    });
+
+    const data = await res.json();
     setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error || 'no se pudo enviar el código');
+      return;
+    }
+
+    setCountdown(60);
+    setStep('otp');
   };
 
-  const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+  // ── OTP verify ────────────────────────────────────────────────────
+  const handleOtpVerify = async () => {
+    setError(null);
+    if (otp.length !== 6) {
+      setError('ingresa el código de 6 dígitos');
+      return;
+    }
+
+    setLoading(true);
+    const res = await fetch('/api/auth/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone.trim(), code: otp }),
     });
-    if (error) {
-      setMessage({ type: 'error', text: error.message });
+
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error || 'código inválido');
+      return;
+    }
+
+    setVerificationToken(data.token);
+    setStep('pin-setup');
+  };
+
+  // ── PIN setup (new user registration) ─────────────────────────────
+  const handlePinSetup = async () => {
+    setError(null);
+
+    if (!/^\d{6}$/.test(pin)) {
+      setError('el nip debe ser exactamente 6 dígitos');
+      return;
+    }
+    if (pin !== pinConfirm) {
+      setError('los nips no coinciden');
+      return;
+    }
+
+    setLoading(true);
+
+    // 1. Register user on the server
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: phone.trim(),
+        pin,
+        verificationToken,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setLoading(false);
+      setError(data.error || 'no se pudo crear la cuenta');
+      return;
+    }
+
+    // 2. Sign in immediately
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      phone: phone.trim(),
+      password: pin,
+    });
+
+    setLoading(false);
+
+    if (signInErr) {
+      setError(signInErr.message);
+      return;
+    }
+
+    // Redirect
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = params.get('next') || '/';
+  };
+
+  // ── PIN login (existing user) ─────────────────────────────────────
+  const handlePinLogin = async () => {
+    setError(null);
+
+    if (!/^\d{6}$/.test(pin)) {
+      setError('ingresa tu nip de 6 dígitos');
+      return;
+    }
+
+    setLoading(true);
+
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      phone: phone.trim(),
+      password: pin,
+    });
+
+    setLoading(false);
+
+    if (signInErr) {
+      setError('nip incorrecto');
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = params.get('next') || '/';
+  };
+
+  // ── Resend OTP ────────────────────────────────────────────────────
+  const handleResend = async () => {
+    if (countdown > 0) return;
+    setError(null);
+    setLoading(true);
+
+    const res = await fetch('/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone.trim() }),
+    });
+
+    setLoading(false);
+
+    if (res.ok) {
+      setCountdown(60);
+      setOtp('');
+    } else {
+      const data = await res.json();
+      setError(data.error || 'no se pudo reenviar');
+    }
+  };
+
+  // ── Forgot PIN → re-verify phone ─────────────────────────────────
+  const handleForgotPin = async () => {
+    setError(null);
+    setLoading(true);
+
+    const res = await fetch('/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone.trim() }),
+    });
+
+    setLoading(false);
+
+    if (res.ok) {
+      setCountdown(60);
+      setOtp('');
+      setPin('');
+      setStep('otp');
+    } else {
+      const data = await res.json();
+      setError(data.error || 'no se pudo enviar el código');
     }
   };
 
   return (
     <main className="min-h-screen bg-white flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        {/* logo */}
-        <a href="/" className="flex items-center justify-center mb-10">
-          <div className="w-12 h-12 bg-gray-900 rounded-xl flex items-center justify-center">
-            <span className="text-lg font-bold text-white">a.</span>
-          </div>
-        </a>
-
-        <h1 className="text-2xl font-bold text-gray-900 text-center mb-1">
-          {mode === 'login' ? 'welcome back' : 'create your account'}
-        </h1>
-        <p className="text-gray-500 text-center text-sm mb-8">
-          {mode === 'login'
-            ? 'sign in to your apphouse account'
-            : 'start building apps with ai'}
-        </p>
-
-        {/* google button */}
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors mb-6"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-              fill="#4285F4"
-            />
-            <path
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              fill="#34A853"
-            />
-            <path
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              fill="#FBBC05"
-            />
-            <path
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              fill="#EA4335"
-            />
-          </svg>
-          continue with google
-        </button>
-
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs text-gray-400">or</span>
-          <div className="flex-1 h-px bg-gray-200" />
+        {/* Logo */}
+        <div className="text-center mb-10">
+          <a href="/" className="inline-block">
+            <div className="w-14 h-14 bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <span className="text-xl font-bold text-white">a.</span>
+            </div>
+          </a>
         </div>
 
-        {/* email form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* ─── Step: Phone Number ─── */}
+        {step === 'phone' && (
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-0 outline-none transition-colors text-sm"
-            />
-          </div>
+            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              bienvenido a apphouse
+            </h1>
+            <p className="text-gray-500 text-center text-sm mb-8">
+              ingresa tu teléfono para entrar o crear tu cuenta
+            </p>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              password
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">teléfono</label>
             <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={6}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-0 outline-none transition-colors text-sm"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+521234567890"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-lg tracking-wide"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handlePhoneSubmit()}
             />
-          </div>
 
-          {message && (
-            <div
-              className={`text-sm px-4 py-3 rounded-xl ${
-                message.type === 'error'
-                  ? 'bg-red-50 text-red-700'
-                  : 'bg-green-50 text-green-700'
-              }`}
+            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+            <button
+              onClick={handlePhoneSubmit}
+              disabled={loading}
+              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {message.text}
+              {loading ? 'verificando...' : 'continuar'}
+            </button>
+          </div>
+        )}
+
+        {/* ─── Step: OTP Verification ─── */}
+        {step === 'otp' && (
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              verifica tu teléfono
+            </h1>
+            <p className="text-gray-500 text-center text-sm mb-8">
+              enviamos un código de 6 dígitos a{' '}
+              <span className="text-gray-900 font-medium">{phone}</span>
+            </p>
+
+            <CodeInput value={otp} onChange={setOtp} length={6} autoFocus />
+
+            {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
+
+            <button
+              onClick={handleOtpVerify}
+              disabled={loading || otp.length !== 6}
+              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'verificando...' : 'verificar'}
+            </button>
+
+            <div className="mt-4 text-center">
+              {countdown > 0 ? (
+                <p className="text-sm text-gray-400">reenviar en {countdown}s</p>
+              ) : (
+                <button
+                  onClick={handleResend}
+                  disabled={loading}
+                  className="text-sm text-gray-600 hover:text-gray-900 underline underline-offset-2"
+                >
+                  reenviar código
+                </button>
+              )}
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-4 py-3 bg-gray-900 text-white rounded-xl font-medium text-sm hover:bg-gray-800 transition-all disabled:opacity-40"
-          >
-            {loading ? 'loading...' : mode === 'login' ? 'sign in' : 'create account'}
-          </button>
-        </form>
+            <button
+              onClick={() => {
+                setStep('phone');
+                setOtp('');
+                setError(null);
+              }}
+              className="w-full mt-3 text-sm text-gray-400 hover:text-gray-600"
+            >
+              ← cambiar número
+            </button>
+          </div>
+        )}
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          {mode === 'login' ? (
-            <>
-              don&apos;t have an account?{' '}
+        {/* ─── Step: PIN Setup (new users) ─── */}
+        {step === 'pin-setup' && (
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              crea tu nip
+            </h1>
+            <p className="text-gray-500 text-center text-sm mb-8">
+              elige un nip de 6 dígitos para entrar la próxima vez — sin sms
+            </p>
+
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">nip</label>
+            <CodeInput value={pin} onChange={setPin} length={6} masked />
+
+            <label className="block text-sm font-medium text-gray-700 mb-1.5 mt-5">
+              confirmar nip
+            </label>
+            <CodeInput value={pinConfirm} onChange={setPinConfirm} length={6} masked />
+
+            {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
+
+            <button
+              onClick={handlePinSetup}
+              disabled={loading || pin.length !== 6 || pinConfirm.length !== 6}
+              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'creando cuenta...' : 'crear cuenta'}
+            </button>
+          </div>
+        )}
+
+        {/* ─── Step: PIN Login (existing users) ─── */}
+        {step === 'pin-login' && (
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              hola de nuevo
+            </h1>
+            <p className="text-gray-500 text-center text-sm mb-8">
+              ingresa tu nip para{' '}
+              <span className="text-gray-900 font-medium">{phone}</span>
+            </p>
+
+            <CodeInput value={pin} onChange={setPin} length={6} masked autoFocus />
+
+            {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
+
+            <button
+              onClick={handlePinLogin}
+              disabled={loading || pin.length !== 6}
+              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'entrando...' : 'entrar'}
+            </button>
+
+            <div className="mt-4 flex items-center justify-between">
               <button
-                onClick={() => { setMode('signup'); setMessage(null); }}
-                className="text-gray-900 font-medium hover:underline"
+                onClick={() => {
+                  setStep('phone');
+                  setPin('');
+                  setError(null);
+                }}
+                className="text-sm text-gray-400 hover:text-gray-600"
               >
-                sign up
+                ← cambiar número
               </button>
-            </>
-          ) : (
-            <>
-              already have an account?{' '}
               <button
-                onClick={() => { setMode('login'); setMessage(null); }}
-                className="text-gray-900 font-medium hover:underline"
+                onClick={handleForgotPin}
+                disabled={loading}
+                className="text-sm text-gray-600 hover:text-gray-900 underline underline-offset-2"
               >
-                sign in
+                olvidé mi nip
               </button>
-            </>
-          )}
-        </p>
+            </div>
+          </div>
+        )}
       </div>
     </main>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CodeInput — 6-box digit input for OTP and PIN
+// ─────────────────────────────────────────────────────────────────────────────
+function CodeInput({
+  value,
+  onChange,
+  length = 6,
+  masked = false,
+  autoFocus = false,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  length?: number;
+  masked?: boolean;
+  autoFocus?: boolean;
+}) {
+  const refs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (autoFocus && refs.current[0]) {
+      refs.current[0].focus();
+    }
+  }, [autoFocus]);
+
+  const handleChange = useCallback(
+    (idx: number, char: string) => {
+      if (!/^\d?$/.test(char)) return;
+      const arr = value.split('');
+      arr[idx] = char;
+      const next = arr.join('').slice(0, length);
+      onChange(next);
+      if (char && idx < length - 1) {
+        refs.current[idx + 1]?.focus();
+      }
+    },
+    [value, onChange, length]
+  );
+
+  const handleKeyDown = useCallback(
+    (idx: number, e: React.KeyboardEvent) => {
+      if (e.key === 'Backspace' && !value[idx] && idx > 0) {
+        refs.current[idx - 1]?.focus();
+        const arr = value.split('');
+        arr[idx - 1] = '';
+        onChange(arr.join(''));
+      }
+    },
+    [value, onChange]
+  );
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      e.preventDefault();
+      const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, length);
+      onChange(pasted);
+      const focusIdx = Math.min(pasted.length, length - 1);
+      refs.current[focusIdx]?.focus();
+    },
+    [onChange, length]
+  );
+
+  return (
+    <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+      {Array.from({ length }).map((_, i) => (
+        <input
+          key={i}
+          ref={(el) => {
+            refs.current[i] = el;
+          }}
+          type={masked ? 'password' : 'text'}
+          inputMode="numeric"
+          maxLength={1}
+          value={value[i] || ''}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          className="w-12 h-14 text-center text-xl font-bold border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+        />
+      ))}
+    </div>
   );
 }
