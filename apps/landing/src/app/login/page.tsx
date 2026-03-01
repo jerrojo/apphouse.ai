@@ -35,22 +35,23 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    // Check if user exists by trying a dummy login server-side
-    const checkRes = await fetch('/api/auth/login', {
+
+    // Check if user exists using admin API (reliable, not a dummy login)
+    const checkRes = await fetch('/api/auth/check-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleaned, pin: '____' }),
+      body: JSON.stringify({ phone: cleaned }),
     });
     const checkData = await checkRes.json();
-    const errMsg = (checkData.error || '').toLowerCase();
 
-    if (errMsg.includes('invalid') && errMsg.includes('credentials')) {
+    if (checkRes.ok && checkData.exists) {
       // User exists — ask for their PIN
       setStep('pin-login');
       setLoading(false);
       return;
     }
 
+    // New user — send OTP for registration
     const res = await fetch('/api/auth/send-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
