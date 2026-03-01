@@ -64,8 +64,8 @@ const translations = {
     heroTitle1: { es: 'descríbelo.', en: 'describe it.' },
     heroTitle2: { es: 'lo construimos.', en: 'we build it.' },
     heroSubtitle: {
-      es: 'fábrica de apps con ia. dinos qué necesitas, nuestros 9 agentes diseñan, construyen y publican tu app en web, ios y android.',
-      en: 'ai-powered app factory. tell us what you need, our 9 agents design, build, and deploy your app to web, ios, and android.',
+      es: 'fábrica de apps con ia. dinos qué necesitas, nuestros 10 agentes diseñan, construyen y publican tu app en web, ios y android.',
+      en: 'ai-powered app factory. tell us what you need, our 10 agents design, build, and deploy your app to web, ios, and android.',
     },
     ctaCreate: { es: 'crea tu primera app', en: 'create your first app' },
     ctaHow: { es: 'cómo funciona', en: 'how it works' },
@@ -81,8 +81,8 @@ const translations = {
     },
     step02Title: { es: 'cocinando', en: 'cooking' },
     step02Text: {
-      es: '9 agentes especializados trabajan en secuencia: ux → wireframes → ui → dev → data → ai → sales → cfo → pm.',
-      en: '9 specialized agents work in sequence: ux → wireframes → ui → dev → data → ai → sales → cfo → pm.',
+      es: '10 agentes especializados trabajan en secuencia: ux → wireframes → ui → dev → qa → data → ai → sales → cfo → pm.',
+      en: '10 specialized agents work in sequence: ux → wireframes → ui → dev → qa → data → ai → sales → cfo → pm.',
     },
     step03Title: { es: 'refina', en: 'refine' },
     step03Text: {
@@ -101,7 +101,7 @@ const translations = {
     createNew: { es: 'crear nueva app', en: 'create new app' },
 
     // Agents section
-    agentsTitle: { es: '9 agentes. un pipeline.', en: '9 agents. one pipeline.' },
+    agentsTitle: { es: '10 agentes. un pipeline.', en: '10 agents. one pipeline.' },
     agentsSubtitle: {
       es: 'cada agente es un especialista. juntos construyen apps completas.',
       en: 'each agent is a specialist. together they build complete apps.',

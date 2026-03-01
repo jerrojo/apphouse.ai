@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 // Agent pipeline order (mirrors packages/agents/src/config.ts)
-const PIPELINE_ORDER = ['ux', 'wireframes', 'ui', 'dev', 'data', 'ai', 'sales', 'cfo', 'pm'] as const;
+const PIPELINE_ORDER = ['ux', 'wireframes', 'ui', 'dev', 'qa', 'data', 'ai', 'sales', 'cfo', 'pm'] as const;
 
 // POST /api/pipeline — start a new pipeline run
 export async function POST(req: NextRequest) {
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     if (runError) throw runError;
 
-    // Create agent tasks for all 9 agents
+    // Create agent tasks for all 10 agents
     const agentTasks = PIPELINE_ORDER.map((agentName, idx) => ({
       pipeline_run_id: run.id,
       agent_name: agentName,
