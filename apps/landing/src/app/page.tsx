@@ -4,6 +4,7 @@ import { getServerLocale } from '@/lib/i18n/server';
 import translations from '@/lib/i18n/translations';
 import { t } from '@/lib/i18n';
 import ReactiveOrbs from './ReactiveOrbs';
+import ProfileMenu from './ProfileMenu';
 
 const H = translations.home;
 
@@ -48,16 +49,10 @@ export default async function Home() {
               </Link>
             )}
             {user ? (
-              <form action="/auth/signout" method="POST">
-                <button
-                  type="submit"
-                  className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold hover:bg-blue-700 transition-colors"
-                  aria-label="profile menu"
-                  title={user.phone || user.email || 'Account'}
-                >
-                  {(user.phone || user.email || '?').slice(-2)}
-                </button>
-              </form>
+              <ProfileMenu
+                phone={user.phone || user.email || '??'}
+                locale={locale}
+              />
             ) : (
               <Link
                 href="/login"

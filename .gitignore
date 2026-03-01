@@ -39,3 +39,4 @@ Thumbs.db
 
 # Supabase
 supabase/.temp/
+package-lock.json

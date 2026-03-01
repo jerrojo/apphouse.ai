@@ -117,6 +117,24 @@ const translations = {
     about: { es: 'acerca', en: 'about' },
     docs: { es: 'docs', en: 'docs' },
   },
+
+  // ── Preview / Chat / Edit ──────────────────────────────────────────
+  preview: {
+    edit: { es: 'editar', en: 'edit' },
+    editing: { es: 'editando', en: 'editing' },
+    chatPlaceholder: { es: 'dile al PM qué cambiar...', en: 'tell the PM what to change...' },
+    chatPlaceholderEdit: { es: 'describe el cambio en ese punto...', en: 'describe the change at that point...' },
+    tapHint: { es: 'toca donde quieras hacer un cambio', en: 'tap where you want to make a change' },
+    send: { es: 'enviar', en: 'send' },
+    recording: { es: 'grabando...', en: 'recording...' },
+    processing: { es: 'procesando...', en: 'processing...' },
+  },
+
+  // ── Profile ────────────────────────────────────────────────────────
+  profile: {
+    account: { es: 'cuenta', en: 'account' },
+    signOut: { es: 'cerrar sesión', en: 'sign out' },
+  },
 } as const;
 
 export default translations;
