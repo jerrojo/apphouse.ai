@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { translations, detectLocale, t } from '@/lib/i18n';
+import AppIcon from '../AppIcon';
 
 type Step = 'phone' | 'otp' | 'pin-setup' | 'pin-login';
 const L = translations.login;
@@ -173,9 +174,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
           <a href="/" className="inline-block">
-            <div className="w-14 h-14 bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-xl font-bold text-white">a.</span>
-            </div>
+            <AppIcon size={56} className="mx-auto mb-4" />
           </a>
         </div>
 

@@ -5,6 +5,7 @@ import translations from '@/lib/i18n/translations';
 import { t } from '@/lib/i18n';
 import ReactiveOrbs from './ReactiveOrbs';
 import ProfileMenu from './ProfileMenu';
+import AppIcon from './AppIcon';
 
 const H = translations.home;
 
@@ -35,8 +36,9 @@ export default async function Home() {
       {/* nav — floating over canvas */}
       <nav className="fixed top-0 w-full z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight text-gray-900">
-            apphouse<span className="text-blue-600">.ai</span>
+          <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-gray-900">
+            <AppIcon size={28} />
+            apphouse
           </Link>
           <div className="flex items-center gap-4">
             {user && (
@@ -67,8 +69,8 @@ export default async function Home() {
 
       {/* hero — always exactly one screen */}
       <section className="relative z-10 flex flex-col items-center justify-center h-screen px-6 text-center">
-        <div className="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mb-8 shadow-2xl">
-          <span className="text-2xl font-bold text-white">a.</span>
+        <div className="mb-8">
+          <AppIcon size={64} className="drop-shadow-2xl" />
         </div>
         <h1 className="text-5xl font-bold tracking-tight text-gray-900 sm:text-7xl">
           {t(H.heroTitle1, locale)}<br />

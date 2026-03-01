@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { detectLocale } from '@/lib/i18n';
 import DomainChecker from '../DomainChecker';
 import VoiceRecorder from '../VoiceRecorder';
+import AppIcon from '../AppIcon';
 
 type Step = 1 | 2 | 3;
 type Vibe = 'minimal' | 'playful' | 'corporate' | 'premium' | 'bold';
@@ -167,8 +168,9 @@ export default function NewAppPage() {
       {/* nav */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-gray-100 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/" className="text-lg font-bold tracking-tight text-gray-900">
-            apphouse<span className="text-blue-600">.ai</span>
+          <a href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-gray-900">
+            <AppIcon size={28} />
+            apphouse
           </a>
           <a href="/" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
             cancel
