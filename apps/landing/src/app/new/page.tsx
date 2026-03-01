@@ -151,8 +151,8 @@ export default function NewAppPage() {
 
       if (pipelineError) throw pipelineError;
 
-      // 6. Redirect to home (later: redirect to /cooking/[id])
-      window.location.href = '/';
+      // 6. Redirect to preview page
+      window.location.href = `/preview/${slug}`;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'something went wrong';
       setError(message);

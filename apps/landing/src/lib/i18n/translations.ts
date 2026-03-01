@@ -107,6 +107,12 @@ const translations = {
       en: 'each agent is a specialist. together they build complete apps.',
     },
 
+    // Preview & Publish
+    preview: { es: 'preview', en: 'preview' },
+    publish: { es: 'publicar', en: 'publish' },
+    published: { es: 'publicado', en: 'published' },
+    viewLive: { es: 'ver en vivo', en: 'view live' },
+
     // Footer
     about: { es: 'acerca', en: 'about' },
     docs: { es: 'docs', en: 'docs' },

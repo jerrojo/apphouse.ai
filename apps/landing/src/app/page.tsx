@@ -13,12 +13,12 @@ export default async function Home() {
   const locale = await getServerLocale();
 
   // If logged in, fetch their apps
-  let apps: { slug: string; name: string; status: string; icon_url: string | null; description: string | null }[] = [];
+  let apps: { slug: string; name: string; status: string; published_status: string | null; published_url: string | null; icon_url: string | null; description: string | null }[] = [];
   if (user) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (supabase as any)
       .from('apps')
-      .select('slug, name, status, icon_url, description')
+      .select('slug, name, status, published_status, published_url, icon_url, description')
       .eq('created_by', user.id)
       .order('created_at', { ascending: false });
     apps = data || [];
@@ -128,17 +128,44 @@ export default async function Home() {
               {apps.map((app) => (
                 <div
                   key={app.slug}
-                  className="group p-6 bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-lg transition-all cursor-pointer"
+                  className="group p-6 bg-white rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-lg transition-all"
                 >
                   <div className="text-3xl mb-4">{app.icon_url || '🚀'}</div>
                   <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
                     {app.name}
                   </h3>
                   <p className="mt-1 text-gray-500 text-sm">{app.description || t(H.noDescription, locale)}</p>
-                  <div className="mt-4">
+                  <div className="mt-4 flex items-center gap-2">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                       {app.status}
                     </span>
+                    {app.published_status === 'published' && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                        {t(H.published, locale)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-4 flex items-center gap-2">
+                    <Link
+                      href={`/preview/${app.slug}`}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      {t(H.preview, locale)}
+                    </Link>
+                    {app.published_status === 'published' && app.published_url ? (
+                      <a
+                        href={app.published_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
+                      >
+                        {t(H.viewLive, locale)} ↗
+                      </a>
+                    ) : app.status !== 'draft' ? (
+                      <span className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg cursor-default">
+                        {t(H.publish, locale)}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               ))}
