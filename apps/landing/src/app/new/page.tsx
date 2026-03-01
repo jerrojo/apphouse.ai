@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { detectLocale } from '@/lib/i18n';
+import DomainChecker from '../DomainChecker';
+import VoiceRecorder from '../VoiceRecorder';
 
 type Step = 1 | 2 | 3;
 type Vibe = 'minimal' | 'playful' | 'corporate' | 'premium' | 'bold';
@@ -53,6 +56,7 @@ export default function NewAppPage() {
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createClient();
+  const locale = useMemo(() => detectLocale(), []);
 
   const update = (field: keyof IntakeForm, value: unknown) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -288,18 +292,19 @@ export default function NewAppPage() {
             </div>
 
             <div>
-              <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 domain (optional)
               </label>
-              <input
-                id="domain"
-                type="text"
-                value={form.desiredDomain}
-                onChange={(e) => update('desiredDomain', e.target.value)}
-                placeholder="myapp.com"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-0 outline-none transition-colors text-sm"
+              <DomainChecker
+                defaultName={form.oneSentence.split(' ')[0] || ''}
+                onSelect={(domain) => update('desiredDomain', domain)}
+                locale={locale}
               />
-              <p className="text-xs text-gray-400 mt-1">we&apos;ll check availability via godaddy</p>
+              {form.desiredDomain && (
+                <p className="text-xs text-green-600 mt-2">
+                  selected: <span className="font-mono font-medium">{form.desiredDomain}</span>
+                </p>
+              )}
             </div>
 
             <div>
@@ -389,6 +394,21 @@ export default function NewAppPage() {
                 placeholder="special features, integrations, branding notes..."
                 rows={3}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-gray-400 focus:ring-0 outline-none transition-colors text-sm resize-none"
+              />
+            </div>
+
+            {/* voice notes — speak your vision to the PM */}
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-sm font-medium text-gray-700 mb-3">
+                {locale === 'es' ? 'o cuéntanos con tu voz' : 'or tell us with your voice'}
+              </p>
+              <VoiceRecorder
+                appId="intake"
+                sessionId="new"
+                locale={locale}
+                onTranscript={(text) => {
+                  update('additionalNotes', form.additionalNotes ? `${form.additionalNotes}\n\n[voice] ${text}` : `[voice] ${text}`);
+                }}
               />
             </div>
           </div>
