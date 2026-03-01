@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { translations, detectLocale, t } from '@/lib/i18n';
 
 type Step = 'phone' | 'otp' | 'pin-setup' | 'pin-login';
@@ -19,7 +18,6 @@ export default function LoginPage() {
   const [countdown, setCountdown] = useState(0);
 
   const locale = useMemo(() => detectLocale(), []);
-  const supabase = createClient();
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -37,13 +35,17 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    const { error: signInErr } = await supabase.auth.signInWithPassword({
-      phone: cleaned,
-      password: '____',
+    // Check if user exists by trying a dummy login server-side
+    const checkRes = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: cleaned, pin: '____' }),
     });
-    const errMsg = signInErr?.message?.toLowerCase() || '';
+    const checkData = await checkRes.json();
+    const errMsg = (checkData.error || '').toLowerCase();
 
     if (errMsg.includes('invalid') && errMsg.includes('credentials')) {
+      // User exists — ask for their PIN
       setStep('pin-login');
       setLoading(false);
       return;
@@ -84,6 +86,21 @@ export default function LoginPage() {
     setStep('pin-setup');
   };
 
+  // ── Server-side login helper ──────────────────────────────────────
+  const serverLogin = async (phoneNum: string, pinCode: string): Promise<boolean> => {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phoneNum, pin: pinCode }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || t(L.wrongPin, locale));
+      return false;
+    }
+    return true;
+  };
+
   // ── PIN setup ─────────────────────────────────────────────────────
   const handlePinSetup = async () => {
     setError(null);
@@ -99,11 +116,10 @@ export default function LoginPage() {
     const data = await res.json();
     if (!res.ok) { setLoading(false); setError(data.error || t(L.registerFailed, locale)); return; }
 
-    const { error: signInErr } = await supabase.auth.signInWithPassword({
-      phone: phone.trim(), password: pin,
-    });
+    // Sign in server-side so cookies are set for SSR
+    const ok = await serverLogin(phone.trim(), pin);
     setLoading(false);
-    if (signInErr) { setError(signInErr.message); return; }
+    if (!ok) return;
 
     const params = new URLSearchParams(window.location.search);
     window.location.href = params.get('next') || '/';
@@ -115,11 +131,9 @@ export default function LoginPage() {
     if (!/^\d{4}$/.test(pin)) { setError(t(L.pinError, locale)); return; }
 
     setLoading(true);
-    const { error: signInErr } = await supabase.auth.signInWithPassword({
-      phone: phone.trim(), password: pin,
-    });
+    const ok = await serverLogin(phone.trim(), pin);
     setLoading(false);
-    if (signInErr) { setError(t(L.wrongPin, locale)); return; }
+    if (!ok) return;
 
     const params = new URLSearchParams(window.location.search);
     window.location.href = params.get('next') || '/';
