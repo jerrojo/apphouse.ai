@@ -39,7 +39,7 @@ export default function LoginPage() {
     setLoading(true);
     const { error: signInErr } = await supabase.auth.signInWithPassword({
       phone: cleaned,
-      password: '______',
+      password: '____',
     });
     const errMsg = signInErr?.message?.toLowerCase() || '';
 
@@ -87,7 +87,7 @@ export default function LoginPage() {
   // ── PIN setup ─────────────────────────────────────────────────────
   const handlePinSetup = async () => {
     setError(null);
-    if (!/^\d{6}$/.test(pin)) { setError(t(L.pinDigitsError, locale)); return; }
+    if (!/^\d{4}$/.test(pin)) { setError(t(L.pinDigitsError, locale)); return; }
     if (pin !== pinConfirm) { setError(t(L.pinMismatch, locale)); return; }
 
     setLoading(true);
@@ -112,7 +112,7 @@ export default function LoginPage() {
   // ── PIN login ─────────────────────────────────────────────────────
   const handlePinLogin = async () => {
     setError(null);
-    if (!/^\d{6}$/.test(pin)) { setError(t(L.pinError, locale)); return; }
+    if (!/^\d{4}$/.test(pin)) { setError(t(L.pinError, locale)); return; }
 
     setLoading(true);
     const { error: signInErr } = await supabase.auth.signInWithPassword({
@@ -218,11 +218,11 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">{t(L.pinSetupTitle, locale)}</h1>
             <p className="text-gray-500 text-center text-sm mb-8">{t(L.pinSetupSubtitle, locale)}</p>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">{t(L.pinLabel, locale)}</label>
-            <CodeInput value={pin} onChange={setPin} length={6} masked />
+            <CodeInput value={pin} onChange={setPin} length={4} masked />
             <label className="block text-sm font-medium text-gray-700 mb-1.5 mt-5">{t(L.pinConfirmLabel, locale)}</label>
-            <CodeInput value={pinConfirm} onChange={setPinConfirm} length={6} masked />
+            <CodeInput value={pinConfirm} onChange={setPinConfirm} length={4} masked />
             {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
-            <button onClick={handlePinSetup} disabled={loading || pin.length !== 6 || pinConfirm.length !== 6}
+            <button onClick={handlePinSetup} disabled={loading || pin.length !== 4 || pinConfirm.length !== 4}
               className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? t(L.creatingAccount, locale) : t(L.createAccount, locale)}
             </button>
@@ -236,9 +236,9 @@ export default function LoginPage() {
             <p className="text-gray-500 text-center text-sm mb-8">
               {t(L.enterPin, locale)} <span className="text-gray-900 font-medium">{phone}</span>
             </p>
-            <CodeInput value={pin} onChange={setPin} length={6} masked autoFocus />
+            <CodeInput value={pin} onChange={setPin} length={4} masked autoFocus />
             {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
-            <button onClick={handlePinLogin} disabled={loading || pin.length !== 6}
+            <button onClick={handlePinLogin} disabled={loading || pin.length !== 4}
               className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? t(L.signingIn, locale) : t(L.signIn, locale)}
             </button>

@@ -14,8 +14,8 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!/^\d{6}$/.test(pin)) {
-      return NextResponse.json({ error: 'pin must be exactly 6 digits' }, { status: 400 });
+    if (!/^\d{4}$/.test(pin)) {
+      return NextResponse.json({ error: 'pin must be exactly 4 digits' }, { status: 400 });
     }
 
     // ── Verify the OTP token ─────────────────────────────────────────

@@ -37,12 +37,12 @@ const translations = {
     // PIN setup step
     pinSetupTitle: { es: 'crea tu nip', en: 'create your pin' },
     pinSetupSubtitle: {
-      es: 'elige un nip de 6 dígitos para entrar la próxima vez — sin sms',
-      en: 'choose a 6-digit pin to sign in next time — no sms needed',
+      es: 'elige un nip de 4 dígitos para entrar la próxima vez — sin sms',
+      en: 'choose a 4-digit pin to sign in next time — no sms needed',
     },
     pinLabel: { es: 'nip', en: 'pin' },
     pinConfirmLabel: { es: 'confirmar nip', en: 'confirm pin' },
-    pinDigitsError: { es: 'el nip debe ser exactamente 6 dígitos', en: 'pin must be exactly 6 digits' },
+    pinDigitsError: { es: 'el nip debe ser exactamente 4 dígitos', en: 'pin must be exactly 4 digits' },
     pinMismatch: { es: 'los nips no coinciden', en: 'pins don\'t match' },
     createAccount: { es: 'crear cuenta', en: 'create account' },
     creatingAccount: { es: 'creando cuenta...', en: 'creating account...' },
@@ -51,7 +51,7 @@ const translations = {
     // PIN login step
     welcomeBack: { es: 'hola de nuevo', en: 'welcome back' },
     enterPin: { es: 'ingresa tu nip para', en: 'enter your pin for' },
-    pinError: { es: 'ingresa tu nip de 6 dígitos', en: 'enter your 6-digit pin' },
+    pinError: { es: 'ingresa tu nip de 4 dígitos', en: 'enter your 4-digit pin' },
     wrongPin: { es: 'nip incorrecto', en: 'wrong pin' },
     signIn: { es: 'entrar', en: 'sign in' },
     signingIn: { es: 'entrando...', en: 'signing in...' },
@@ -69,6 +69,8 @@ const translations = {
     },
     ctaCreate: { es: 'crea tu primera app', en: 'create your first app' },
     ctaHow: { es: 'cómo funciona', en: 'how it works' },
+    ctaLogin: { es: 'inicia sesión para crear', en: 'sign in to create' },
+    signIn: { es: 'entrar', en: 'sign in' },
 
     // How it works
     howTitle: { es: 'de idea a app store en minutos', en: 'from idea to app store in minutes' },
