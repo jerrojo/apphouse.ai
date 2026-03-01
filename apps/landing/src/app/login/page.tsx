@@ -68,7 +68,7 @@ export default function LoginPage() {
   // ── OTP verify ────────────────────────────────────────────────────
   const handleOtpVerify = async () => {
     setError(null);
-    if (otp.length !== 6) { setError(t(L.otpError, locale)); return; }
+    if (otp.length !== 4) { setError(t(L.otpError, locale)); return; }
 
     setLoading(true);
     const res = await fetch('/api/auth/verify-otp', {
@@ -191,9 +191,9 @@ export default function LoginPage() {
             <p className="text-gray-500 text-center text-sm mb-8">
               {t(L.verifySent, locale)} <span className="text-gray-900 font-medium">{phone}</span>
             </p>
-            <CodeInput value={otp} onChange={setOtp} length={6} autoFocus />
+            <CodeInput value={otp} onChange={setOtp} length={4} autoFocus />
             {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
-            <button onClick={handleOtpVerify} disabled={loading || otp.length !== 6}
+            <button onClick={handleOtpVerify} disabled={loading || otp.length !== 4}
               className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? t(L.verifying, locale) : t(L.verify, locale)}
             </button>

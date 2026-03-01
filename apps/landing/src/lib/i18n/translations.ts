@@ -23,8 +23,8 @@ const translations = {
 
     // OTP step
     verifyTitle: { es: 'verifica tu teléfono', en: 'verify your phone' },
-    verifySent: { es: 'enviamos un código de 6 dígitos a', en: 'we sent a 6-digit code to' },
-    otpError: { es: 'ingresa el código de 6 dígitos', en: 'enter the 6-digit code' },
+    verifySent: { es: 'enviamos un código de 4 dígitos a', en: 'we sent a 4-digit code to' },
+    otpError: { es: 'ingresa el código de 4 dígitos', en: 'enter the 4-digit code' },
     verify: { es: 'verificar', en: 'verify' },
     verifying: { es: 'verificando...', en: 'verifying...' },
     invalidCode: { es: 'código inválido', en: 'invalid code' },
