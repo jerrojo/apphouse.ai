@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { translations, detectLocale, t } from '@/lib/i18n';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Steps: phone → otp (new users) → pin-setup (new users) → pin-login (existing)
-// ─────────────────────────────────────────────────────────────────────────────
 type Step = 'phone' | 'otp' | 'pin-setup' | 'pin-login';
+const L = translations.login;
 
 export default function LoginPage() {
   const [step, setStep] = useState<Step>('phone');
@@ -19,58 +18,49 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
+  const locale = useMemo(() => detectLocale(), []);
   const supabase = createClient();
 
-  // ── Countdown timer for resend ────────────────────────────────────
   useEffect(() => {
     if (countdown <= 0) return;
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
   }, [countdown]);
 
   // ── Phone submit ──────────────────────────────────────────────────
   const handlePhoneSubmit = async () => {
     setError(null);
     const cleaned = phone.trim();
-
     if (!/^\+[1-9]\d{6,14}$/.test(cleaned)) {
-      setError('ingresa tu teléfono con código de país (ej. +521234567890)');
+      setError(t(L.phoneError, locale));
       return;
     }
 
     setLoading(true);
-
-    // Try signing in with a dummy PIN to check if the user exists.
-    // Supabase returns "Invalid login credentials" if user exists but wrong pw.
     const { error: signInErr } = await supabase.auth.signInWithPassword({
       phone: cleaned,
-      password: '______', // dummy — will always fail
+      password: '______',
     });
-
     const errMsg = signInErr?.message?.toLowerCase() || '';
 
     if (errMsg.includes('invalid') && errMsg.includes('credentials')) {
-      // User exists — ask for their PIN
       setStep('pin-login');
       setLoading(false);
       return;
     }
 
-    // User doesn't exist — send OTP for registration
     const res = await fetch('/api/auth/send-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: cleaned }),
     });
-
     const data = await res.json();
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error || 'no se pudo enviar el código');
+      setError(data.error || t(L.sendFailed, locale));
       return;
     }
-
     setCountdown(60);
     setStep('otp');
   };
@@ -78,10 +68,7 @@ export default function LoginPage() {
   // ── OTP verify ────────────────────────────────────────────────────
   const handleOtpVerify = async () => {
     setError(null);
-    if (otp.length !== 6) {
-      setError('ingresa el código de 6 dígitos');
-      return;
-    }
+    if (otp.length !== 6) { setError(t(L.otpError, locale)); return; }
 
     setLoading(true);
     const res = await fetch('/api/auth/verify-otp', {
@@ -89,149 +76,86 @@ export default function LoginPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: phone.trim(), code: otp }),
     });
-
     const data = await res.json();
     setLoading(false);
 
-    if (!res.ok) {
-      setError(data.error || 'código inválido');
-      return;
-    }
-
+    if (!res.ok) { setError(data.error || t(L.invalidCode, locale)); return; }
     setVerificationToken(data.token);
     setStep('pin-setup');
   };
 
-  // ── PIN setup (new user registration) ─────────────────────────────
+  // ── PIN setup ─────────────────────────────────────────────────────
   const handlePinSetup = async () => {
     setError(null);
-
-    if (!/^\d{6}$/.test(pin)) {
-      setError('el nip debe ser exactamente 6 dígitos');
-      return;
-    }
-    if (pin !== pinConfirm) {
-      setError('los nips no coinciden');
-      return;
-    }
+    if (!/^\d{6}$/.test(pin)) { setError(t(L.pinDigitsError, locale)); return; }
+    if (pin !== pinConfirm) { setError(t(L.pinMismatch, locale)); return; }
 
     setLoading(true);
-
-    // 1. Register user on the server
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phone: phone.trim(),
-        pin,
-        verificationToken,
-      }),
+      body: JSON.stringify({ phone: phone.trim(), pin, verificationToken }),
     });
-
     const data = await res.json();
+    if (!res.ok) { setLoading(false); setError(data.error || t(L.registerFailed, locale)); return; }
 
-    if (!res.ok) {
-      setLoading(false);
-      setError(data.error || 'no se pudo crear la cuenta');
-      return;
-    }
-
-    // 2. Sign in immediately
     const { error: signInErr } = await supabase.auth.signInWithPassword({
-      phone: phone.trim(),
-      password: pin,
+      phone: phone.trim(), password: pin,
     });
-
     setLoading(false);
+    if (signInErr) { setError(signInErr.message); return; }
 
-    if (signInErr) {
-      setError(signInErr.message);
-      return;
-    }
-
-    // Redirect
     const params = new URLSearchParams(window.location.search);
     window.location.href = params.get('next') || '/';
   };
 
-  // ── PIN login (existing user) ─────────────────────────────────────
+  // ── PIN login ─────────────────────────────────────────────────────
   const handlePinLogin = async () => {
     setError(null);
-
-    if (!/^\d{6}$/.test(pin)) {
-      setError('ingresa tu nip de 6 dígitos');
-      return;
-    }
+    if (!/^\d{6}$/.test(pin)) { setError(t(L.pinError, locale)); return; }
 
     setLoading(true);
-
     const { error: signInErr } = await supabase.auth.signInWithPassword({
-      phone: phone.trim(),
-      password: pin,
+      phone: phone.trim(), password: pin,
     });
-
     setLoading(false);
-
-    if (signInErr) {
-      setError('nip incorrecto');
-      return;
-    }
+    if (signInErr) { setError(t(L.wrongPin, locale)); return; }
 
     const params = new URLSearchParams(window.location.search);
     window.location.href = params.get('next') || '/';
   };
 
-  // ── Resend OTP ────────────────────────────────────────────────────
+  // ── Resend / Forgot ───────────────────────────────────────────────
   const handleResend = async () => {
     if (countdown > 0) return;
     setError(null);
     setLoading(true);
-
     const res = await fetch('/api/auth/send-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: phone.trim() }),
     });
-
     setLoading(false);
-
-    if (res.ok) {
-      setCountdown(60);
-      setOtp('');
-    } else {
-      const data = await res.json();
-      setError(data.error || 'no se pudo reenviar');
-    }
+    if (res.ok) { setCountdown(60); setOtp(''); }
+    else { const d = await res.json(); setError(d.error || t(L.resendFailed, locale)); }
   };
 
-  // ── Forgot PIN → re-verify phone ─────────────────────────────────
   const handleForgotPin = async () => {
     setError(null);
     setLoading(true);
-
     const res = await fetch('/api/auth/send-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: phone.trim() }),
     });
-
     setLoading(false);
-
-    if (res.ok) {
-      setCountdown(60);
-      setOtp('');
-      setPin('');
-      setStep('otp');
-    } else {
-      const data = await res.json();
-      setError(data.error || 'no se pudo enviar el código');
-    }
+    if (res.ok) { setCountdown(60); setOtp(''); setPin(''); setStep('otp'); }
+    else { const d = await res.json(); setError(d.error || t(L.sendFailed, locale)); }
   };
 
   return (
     <main className="min-h-screen bg-white flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-10">
           <a href="/" className="inline-block">
             <div className="w-14 h-14 bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -240,159 +164,92 @@ export default function LoginPage() {
           </a>
         </div>
 
-        {/* ─── Step: Phone Number ─── */}
+        {/* ─── Phone ─── */}
         {step === 'phone' && (
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              bienvenido a apphouse
-            </h1>
-            <p className="text-gray-500 text-center text-sm mb-8">
-              ingresa tu teléfono para entrar o crear tu cuenta
-            </p>
-
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">teléfono</label>
+            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">{t(L.welcome, locale)}</h1>
+            <p className="text-gray-500 text-center text-sm mb-8">{t(L.subtitle, locale)}</p>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t(L.phoneLabel, locale)}</label>
             <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+521234567890"
+              type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
+              placeholder={t(L.phonePlaceholder, locale)}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-lg tracking-wide"
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handlePhoneSubmit()}
+              autoFocus onKeyDown={(e) => e.key === 'Enter' && handlePhoneSubmit()}
             />
-
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-
-            <button
-              onClick={handlePhoneSubmit}
-              disabled={loading}
-              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'verificando...' : 'continuar'}
+            <button onClick={handlePhoneSubmit} disabled={loading}
+              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? t(L.checking, locale) : t(L.continue, locale)}
             </button>
           </div>
         )}
 
-        {/* ─── Step: OTP Verification ─── */}
+        {/* ─── OTP ─── */}
         {step === 'otp' && (
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              verifica tu teléfono
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">{t(L.verifyTitle, locale)}</h1>
             <p className="text-gray-500 text-center text-sm mb-8">
-              enviamos un código de 6 dígitos a{' '}
-              <span className="text-gray-900 font-medium">{phone}</span>
+              {t(L.verifySent, locale)} <span className="text-gray-900 font-medium">{phone}</span>
             </p>
-
             <CodeInput value={otp} onChange={setOtp} length={6} autoFocus />
-
             {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
-
-            <button
-              onClick={handleOtpVerify}
-              disabled={loading || otp.length !== 6}
-              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'verificando...' : 'verificar'}
+            <button onClick={handleOtpVerify} disabled={loading || otp.length !== 6}
+              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? t(L.verifying, locale) : t(L.verify, locale)}
             </button>
-
             <div className="mt-4 text-center">
-              {countdown > 0 ? (
-                <p className="text-sm text-gray-400">reenviar en {countdown}s</p>
-              ) : (
-                <button
-                  onClick={handleResend}
-                  disabled={loading}
-                  className="text-sm text-gray-600 hover:text-gray-900 underline underline-offset-2"
-                >
-                  reenviar código
-                </button>
-              )}
+              {countdown > 0
+                ? <p className="text-sm text-gray-400">{t(L.resendIn, locale)} {countdown}s</p>
+                : <button onClick={handleResend} disabled={loading}
+                    className="text-sm text-gray-600 hover:text-gray-900 underline underline-offset-2">
+                    {t(L.resendCode, locale)}
+                  </button>}
             </div>
-
-            <button
-              onClick={() => {
-                setStep('phone');
-                setOtp('');
-                setError(null);
-              }}
-              className="w-full mt-3 text-sm text-gray-400 hover:text-gray-600"
-            >
-              ← cambiar número
+            <button onClick={() => { setStep('phone'); setOtp(''); setError(null); }}
+              className="w-full mt-3 text-sm text-gray-400 hover:text-gray-600">
+              {t(L.changeNumber, locale)}
             </button>
           </div>
         )}
 
-        {/* ─── Step: PIN Setup (new users) ─── */}
+        {/* ─── PIN Setup ─── */}
         {step === 'pin-setup' && (
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              crea tu nip
-            </h1>
-            <p className="text-gray-500 text-center text-sm mb-8">
-              elige un nip de 6 dígitos para entrar la próxima vez — sin sms
-            </p>
-
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">nip</label>
+            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">{t(L.pinSetupTitle, locale)}</h1>
+            <p className="text-gray-500 text-center text-sm mb-8">{t(L.pinSetupSubtitle, locale)}</p>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t(L.pinLabel, locale)}</label>
             <CodeInput value={pin} onChange={setPin} length={6} masked />
-
-            <label className="block text-sm font-medium text-gray-700 mb-1.5 mt-5">
-              confirmar nip
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5 mt-5">{t(L.pinConfirmLabel, locale)}</label>
             <CodeInput value={pinConfirm} onChange={setPinConfirm} length={6} masked />
-
             {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
-
-            <button
-              onClick={handlePinSetup}
-              disabled={loading || pin.length !== 6 || pinConfirm.length !== 6}
-              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'creando cuenta...' : 'crear cuenta'}
+            <button onClick={handlePinSetup} disabled={loading || pin.length !== 6 || pinConfirm.length !== 6}
+              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? t(L.creatingAccount, locale) : t(L.createAccount, locale)}
             </button>
           </div>
         )}
 
-        {/* ─── Step: PIN Login (existing users) ─── */}
+        {/* ─── PIN Login ─── */}
         {step === 'pin-login' && (
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              hola de nuevo
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">{t(L.welcomeBack, locale)}</h1>
             <p className="text-gray-500 text-center text-sm mb-8">
-              ingresa tu nip para{' '}
-              <span className="text-gray-900 font-medium">{phone}</span>
+              {t(L.enterPin, locale)} <span className="text-gray-900 font-medium">{phone}</span>
             </p>
-
             <CodeInput value={pin} onChange={setPin} length={6} masked autoFocus />
-
             {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
-
-            <button
-              onClick={handlePinLogin}
-              disabled={loading || pin.length !== 6}
-              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'entrando...' : 'entrar'}
+            <button onClick={handlePinLogin} disabled={loading || pin.length !== 6}
+              className="w-full mt-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? t(L.signingIn, locale) : t(L.signIn, locale)}
             </button>
-
             <div className="mt-4 flex items-center justify-between">
-              <button
-                onClick={() => {
-                  setStep('phone');
-                  setPin('');
-                  setError(null);
-                }}
-                className="text-sm text-gray-400 hover:text-gray-600"
-              >
-                ← cambiar número
+              <button onClick={() => { setStep('phone'); setPin(''); setError(null); }}
+                className="text-sm text-gray-400 hover:text-gray-600">
+                {t(L.changeNumber, locale)}
               </button>
-              <button
-                onClick={handleForgotPin}
-                disabled={loading}
-                className="text-sm text-gray-600 hover:text-gray-900 underline underline-offset-2"
-              >
-                olvidé mi nip
+              <button onClick={handleForgotPin} disabled={loading}
+                className="text-sm text-gray-600 hover:text-gray-900 underline underline-offset-2">
+                {t(L.forgotPin, locale)}
               </button>
             </div>
           </div>
@@ -406,76 +263,47 @@ export default function LoginPage() {
 // CodeInput — 6-box digit input for OTP and PIN
 // ─────────────────────────────────────────────────────────────────────────────
 function CodeInput({
-  value,
-  onChange,
-  length = 6,
-  masked = false,
-  autoFocus = false,
+  value, onChange, length = 6, masked = false, autoFocus = false,
 }: {
-  value: string;
-  onChange: (val: string) => void;
-  length?: number;
-  masked?: boolean;
-  autoFocus?: boolean;
+  value: string; onChange: (val: string) => void;
+  length?: number; masked?: boolean; autoFocus?: boolean;
 }) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (autoFocus && refs.current[0]) {
-      refs.current[0].focus();
-    }
+    if (autoFocus && refs.current[0]) refs.current[0].focus();
   }, [autoFocus]);
 
-  const handleChange = useCallback(
-    (idx: number, char: string) => {
-      if (!/^\d?$/.test(char)) return;
+  const handleChange = useCallback((idx: number, char: string) => {
+    if (!/^\d?$/.test(char)) return;
+    const arr = value.split('');
+    arr[idx] = char;
+    onChange(arr.join('').slice(0, length));
+    if (char && idx < length - 1) refs.current[idx + 1]?.focus();
+  }, [value, onChange, length]);
+
+  const handleKeyDown = useCallback((idx: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !value[idx] && idx > 0) {
+      refs.current[idx - 1]?.focus();
       const arr = value.split('');
-      arr[idx] = char;
-      const next = arr.join('').slice(0, length);
-      onChange(next);
-      if (char && idx < length - 1) {
-        refs.current[idx + 1]?.focus();
-      }
-    },
-    [value, onChange, length]
-  );
+      arr[idx - 1] = '';
+      onChange(arr.join(''));
+    }
+  }, [value, onChange]);
 
-  const handleKeyDown = useCallback(
-    (idx: number, e: React.KeyboardEvent) => {
-      if (e.key === 'Backspace' && !value[idx] && idx > 0) {
-        refs.current[idx - 1]?.focus();
-        const arr = value.split('');
-        arr[idx - 1] = '';
-        onChange(arr.join(''));
-      }
-    },
-    [value, onChange]
-  );
-
-  const handlePaste = useCallback(
-    (e: React.ClipboardEvent) => {
-      e.preventDefault();
-      const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, length);
-      onChange(pasted);
-      const focusIdx = Math.min(pasted.length, length - 1);
-      refs.current[focusIdx]?.focus();
-    },
-    [onChange, length]
-  );
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, length);
+    onChange(pasted);
+    refs.current[Math.min(pasted.length, length - 1)]?.focus();
+  }, [onChange, length]);
 
   return (
     <div className="flex gap-2 justify-center" onPaste={handlePaste}>
       {Array.from({ length }).map((_, i) => (
-        <input
-          key={i}
-          ref={(el) => {
-            refs.current[i] = el;
-          }}
-          type={masked ? 'password' : 'text'}
-          inputMode="numeric"
-          maxLength={1}
-          value={value[i] || ''}
-          onChange={(e) => handleChange(i, e.target.value)}
+        <input key={i} ref={(el) => { refs.current[i] = el; }}
+          type={masked ? 'password' : 'text'} inputMode="numeric" maxLength={1}
+          value={value[i] || ''} onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           className="w-12 h-14 text-center text-xl font-bold border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
         />

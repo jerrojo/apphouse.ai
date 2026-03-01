@@ -1,9 +1,15 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import { getServerLocale } from '@/lib/i18n/server';
+import translations from '@/lib/i18n/translations';
+import { t } from '@/lib/i18n';
+
+const H = translations.home;
 
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const locale = await getServerLocale();
 
   // If logged in, fetch their apps
   let apps: { slug: string; name: string; status: string; icon_url: string | null; description: string | null }[] = [];
@@ -31,7 +37,7 @@ export default async function Home() {
               className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
             >
               <span className="text-lg leading-none">+</span>
-              new app
+              {t(H.newApp, locale)}
             </Link>
             {user ? (
               <form action="/auth/signout" method="POST">
@@ -66,24 +72,24 @@ export default async function Home() {
           <span className="text-2xl font-bold text-white">a.</span>
         </div>
         <h1 className="text-5xl font-bold tracking-tight text-gray-900 sm:text-7xl">
-          describe it.<br />
-          <span className="text-gray-300">we build it.</span>
+          {t(H.heroTitle1, locale)}<br />
+          <span className="text-gray-300">{t(H.heroTitle2, locale)}</span>
         </h1>
         <p className="mt-6 text-lg text-gray-500 max-w-xl">
-          ai-powered app factory. tell us what you need, our 9 agents design, build, and deploy your app to web, ios, and android.
+          {t(H.heroSubtitle, locale)}
         </p>
         <div className="mt-10 flex gap-4">
           <Link
             href={user ? '/new' : '/login'}
             className="px-8 py-3.5 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            create your first app
+            {t(H.ctaCreate, locale)}
           </Link>
           <a
             href="#how"
             className="px-8 py-3.5 text-gray-600 rounded-xl font-medium hover:bg-gray-50 transition-colors"
           >
-            how it works
+            {t(H.ctaHow, locale)}
           </a>
         </div>
       </section>
@@ -92,14 +98,14 @@ export default async function Home() {
       <section id="how" className="py-24 px-6">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-16">
-            from idea to app store in minutes
+            {t(H.howTitle, locale)}
           </h2>
           <div className="space-y-12">
             {[
-              { step: '01', title: 'describe', text: 'tell us what you want in plain words. our ai asks smart questions until it fully understands your vision.' },
-              { step: '02', title: 'cooking', text: '9 specialized agents work in sequence: ux → wireframes → ui → dev → data → ai → sales → cfo → pm.' },
-              { step: '03', title: 'refine', text: 'navigate your live app and speak your edits. the ai watches and listens, then updates in real-time.' },
-              { step: '04', title: 'publish', text: 'one click to submit to the app store and play store. your app goes live on web instantly.' },
+              { step: '01', title: t(H.step01Title, locale), text: t(H.step01Text, locale) },
+              { step: '02', title: t(H.step02Title, locale), text: t(H.step02Text, locale) },
+              { step: '03', title: t(H.step03Title, locale), text: t(H.step03Text, locale) },
+              { step: '04', title: t(H.step04Title, locale), text: t(H.step04Text, locale) },
             ].map((item) => (
               <div key={item.step} className="flex gap-6 items-start">
                 <span className="text-sm font-mono text-gray-300 pt-1 shrink-0">{item.step}</span>
@@ -118,13 +124,13 @@ export default async function Home() {
         <section id="apps" className="py-24 px-6 bg-gray-50">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-12">
-              <h2 className="text-3xl font-bold text-gray-900">your apps</h2>
+              <h2 className="text-3xl font-bold text-gray-900">{t(H.yourApps, locale)}</h2>
               <Link
                 href="/new"
                 className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-colors flex items-center gap-2"
               >
                 <span className="text-lg leading-none">+</span>
-                new app
+                {t(H.newApp, locale)}
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -137,7 +143,7 @@ export default async function Home() {
                   <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
                     {app.name}
                   </h3>
-                  <p className="mt-1 text-gray-500 text-sm">{app.description || 'no description yet'}</p>
+                  <p className="mt-1 text-gray-500 text-sm">{app.description || t(H.noDescription, locale)}</p>
                   <div className="mt-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                       {app.status}
@@ -153,7 +159,7 @@ export default async function Home() {
                 <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors flex items-center justify-center mb-3">
                   <span className="text-2xl text-gray-400 group-hover:text-gray-600">+</span>
                 </div>
-                <span className="text-sm text-gray-400 group-hover:text-gray-600 font-medium">create new app</span>
+                <span className="text-sm text-gray-400 group-hover:text-gray-600 font-medium">{t(H.createNew, locale)}</span>
               </Link>
             </div>
           </div>
@@ -163,8 +169,8 @@ export default async function Home() {
       {/* agents */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">9 agents. one pipeline.</h2>
-          <p className="text-gray-500 mb-12">each agent is a specialist. together they build complete apps.</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">{t(H.agentsTitle, locale)}</h2>
+          <p className="text-gray-500 mb-12">{t(H.agentsSubtitle, locale)}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { name: 'ux', emoji: '🔬', color: 'bg-purple-50 text-purple-700' },
@@ -191,8 +197,8 @@ export default async function Home() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <p className="text-gray-400 text-sm">© {new Date().getFullYear()} apphouse.ai</p>
           <div className="flex gap-6 text-sm text-gray-400">
-            <a href="#" className="hover:text-gray-600 transition-colors">about</a>
-            <a href="#" className="hover:text-gray-600 transition-colors">docs</a>
+            <a href="#" className="hover:text-gray-600 transition-colors">{t(H.about, locale)}</a>
+            <a href="#" className="hover:text-gray-600 transition-colors">{t(H.docs, locale)}</a>
             <a href="#" className="hover:text-gray-600 transition-colors">github</a>
           </div>
         </div>
