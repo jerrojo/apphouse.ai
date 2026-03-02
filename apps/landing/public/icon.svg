@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <!-- House/pentagon shape -->
-  <path d="M256 38L462 186C470 192 475 201 475 211V430C475 452 457 470 435 470H77C55 470 37 452 37 430V211C37 201 42 192 50 186L256 38Z" fill="#1a1a1a" stroke="#444" stroke-width="18" stroke-linejoin="round"/>
-  <!-- Horizontal bar element -->
-  <rect x="196" y="234" width="120" height="44" rx="14" fill="#555"/>
+  <!-- House/pentagon shape — white -->
+  <path d="M256 38L462 186C470 192 475 201 475 211V430C475 452 457 470 435 470H77C55 470 37 452 37 430V211C37 201 42 192 50 186L256 38Z" fill="rgba(240,240,240,1)" stroke="rgba(200,200,200,0.7)" stroke-width="12" stroke-linejoin="round"/>
+  <!-- Horizontal bar -->
+  <rect x="196" y="234" width="120" height="44" rx="14" fill="rgba(170,170,170,0.6)"/>
 </svg>

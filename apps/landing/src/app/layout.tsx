@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'apphouse — ai-powered app factory',
+  title: 'apphouse',
   description: 'describe your app. 10 ai agents design, build, and deploy it to web, ios, and android. from idea to app store in minutes.',
   metadataBase: new URL('https://apphouse.ai'),
   openGraph: {
-    title: 'apphouse — ai-powered app factory',
+    title: 'apphouse',
     description: 'describe your app. 10 ai agents design, build, and deploy it to web, ios, and android.',
     url: 'https://apphouse.ai',
     siteName: 'apphouse',
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'apphouse — ai-powered app factory',
+    title: 'apphouse',
     description: 'describe your app. 10 ai agents build it. web + ios + android.',
   },
   robots: { index: true, follow: true },
