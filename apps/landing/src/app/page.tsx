@@ -33,7 +33,7 @@ export default async function Home() {
       {/* Flowing gradient background */}
       <GradientBg />
 
-      {/* Nav — logo center, login/profile right */}
+      {/* Nav — logo center, profile right (if logged in) */}
       <nav className="fixed top-0 w-full z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-center relative">
           {/* Logo — top center */}
@@ -42,9 +42,9 @@ export default async function Home() {
             apphouse
           </Link>
 
-          {/* Right side — login or profile */}
-          <div className="absolute right-6 flex items-center gap-3">
-            {user && (
+          {/* Right side — profile only when logged in */}
+          {user && (
+            <div className="absolute right-6 flex items-center gap-3">
               <Link
                 href="/new"
                 className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white/80 text-sm font-medium rounded-lg hover:bg-white/20 transition-colors flex items-center gap-2 border border-white/10"
@@ -52,32 +52,38 @@ export default async function Home() {
                 <span className="text-lg leading-none">+</span>
                 {t(H.newApp, locale)}
               </Link>
-            )}
-            {user ? (
               <ProfileMenu
                 phone={user.phone || user.email || '??'}
                 locale={locale}
               />
-            ) : (
-              <Link
-                href="/login"
-                className="px-4 py-2 text-sm font-medium text-white/60 hover:text-white rounded-lg transition-colors"
-              >
-                {t(H.signIn, locale)}
-              </Link>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </nav>
 
-      {/* Hero — just the bouncing Start button */}
+      {/* Glitch keyframes */}
+      <style>{`
+        @keyframes glitch {
+          0%, 92% { transform: translate(0, 0); opacity: 1; }
+          93% { transform: translate(-2px, 1px); opacity: 0.85; }
+          94% { transform: translate(2px, -1px); opacity: 0.9; }
+          95% { transform: translate(-1px, -2px); opacity: 0.8; }
+          96% { transform: translate(1px, 2px); opacity: 0.95; }
+          97% { transform: translate(0, 0); opacity: 1; }
+          100% { transform: translate(0, 0); opacity: 1; }
+        }
+        .glitch-subtle {
+          animation: glitch 6s ease-in-out infinite;
+        }
+      `}</style>
+
+      {/* Hero — Start button with subtle glitch */}
       <section className="relative z-10 flex flex-col items-center justify-end h-screen pb-32">
-        {/* Bouncing Start / Create button at bottom center */}
         <Link
           href={user ? '/new' : '/login'}
-          className="group relative animate-bounce"
+          className="group relative glitch-subtle"
         >
-          <span className="absolute inset-0 rounded-full bg-white/20 blur-xl group-hover:bg-white/30 transition-all scale-150" />
+          <span className="absolute inset-0 rounded-full bg-white/15 blur-xl group-hover:bg-white/25 transition-all scale-150" />
           <span className="relative px-10 py-4 bg-white text-gray-900 rounded-full text-lg font-semibold hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-white/20 flex items-center gap-2">
             start
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-1 transition-transform" aria-hidden="true">
@@ -89,7 +95,7 @@ export default async function Home() {
 
         {/* Scroll hint if user has apps */}
         {hasApps && (
-          <a href="#apps" className="absolute bottom-8 animate-bounce text-white/30 hover:text-white/50 transition-colors">
+          <a href="#apps" className="absolute bottom-8 text-white/30 hover:text-white/50 transition-colors">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
             </svg>
