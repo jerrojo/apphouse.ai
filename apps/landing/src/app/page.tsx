@@ -84,12 +84,8 @@ export default async function Home() {
           className="group relative glitch-subtle"
         >
           <span className="absolute inset-0 rounded-full bg-white/15 blur-xl group-hover:bg-white/25 transition-all scale-150" />
-          <span className="relative px-10 py-4 bg-white text-gray-900 rounded-full text-lg font-semibold hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-white/20 flex items-center gap-2">
-            start
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-1 transition-transform" aria-hidden="true">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
+          <span className="relative px-10 py-4 bg-white text-gray-900 rounded-full text-lg font-semibold hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-white/20 tracking-widest">
+            GO
           </span>
         </Link>
 
