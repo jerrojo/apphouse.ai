@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1780564887333,
+      "tag": "0000_complex_the_watchers",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1780565050075,
+      "tag": "0001_special_warbound",
+      "breakpoints": true
+    }
+  ]
+}

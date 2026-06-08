@@ -40,3 +40,10 @@ Thumbs.db
 # Supabase
 supabase/.temp/
 package-lock.json
+
+# Manus platform internals
+.project-config.json
+.manus-logs/
+
+# PRISMA CORE lock file (managed by Manus deploy)
+prisma-core/pnpm-lock.yaml
