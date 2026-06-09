@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0a0a12"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -20,16 +20,26 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0a0a12"
       },
-      "package": "ai.apphouse.{{APP_SLUG}}"
+      "package": "ai.apphouse.{{APP_SLUG}}",
+      "versionCode": 1
+    },
+    "huawei": {
+      "package": "ai.apphouse.{{APP_SLUG}}",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-router", "expo-secure-store"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      ["expo-splash-screen", { "backgroundColor": "#0a0a12" }]
+    ],
     "experiments": {
       "typedRoutes": true
     },
